@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<response>
+  <header>
+    <resultCode>00</resultCode>
+    <resultMsg>NORMAL SERVICE.</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <rnum>1</rnum>
+        <platPlc>서울특별시 마포구 성산동 200-1</platPlc>
+        <newPlatPlc>서울특별시 마포구 월드컵북로 190</newPlatPlc>
+        <bldNm>성산시영아파트 1동</bldNm>
+        <dongNm>1동</dongNm>
+        <regstrGbCdNm>집합</regstrGbCdNm>
+        <regstrKindCdNm>표제부</regstrKindCdNm>
+        <mainPurpsCdNm>공동주택</mainPurpsCdNm>
+        <etcPurps>아파트</etcPurps>
+        <totArea>4602.4</totArea>
+        <grndFlrCnt>5</grndFlrCnt>
+        <ugrndFlrCnt>0</ugrndFlrCnt>
+        <useAprDay>19860630</useAprDay>
+        <sigunguCd>11440</sigunguCd>
+        <bjdongCd>12500</bjdongCd>
+        <platGbCd>0</platGbCd>
+        <bun>0200</bun>
+        <ji>0001</ji>
+      </item>
+      <item>
+        <rnum>2</rnum>
+        <platPlc>서울특별시 마포구 성산동 200-1</platPlc>
+        <newPlatPlc>서울특별시 마포구 월드컵북로 190</newPlatPlc>
+        <bldNm>성산시영아파트 14동</bldNm>
+        <dongNm>14동</dongNm>
+        <regstrGbCdNm>집합</regstrGbCdNm>
+        <regstrKindCdNm>표제부</regstrKindCdNm>
+        <mainPurpsCdNm>공동주택</mainPurpsCdNm>
+        <etcPurps>아파트</etcPurps>
+        <totArea>12849.98</totArea>
+        <grndFlrCnt>14</grndFlrCnt>
+        <ugrndFlrCnt>1</ugrndFlrCnt>
+        <useAprDay>19860630</useAprDay>
+        <sigunguCd>11440</sigunguCd>
+        <bjdongCd>12500</bjdongCd>
+        <platGbCd>0</platGbCd>
+        <bun>0200</bun>
+        <ji>0001</ji>
+      </item>
+    </items>
+    <numOfRows>100</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>2</totalCount>
+  </body>
+</response>

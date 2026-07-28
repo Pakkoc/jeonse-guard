@@ -1,0 +1,54 @@
+{
+  "page": 1,
+  "page_size": 100,
+  "total_count": 2,
+  "items": [
+    {
+      "rnum": "1",
+      "platPlc": "서울특별시 마포구 성산동 200-1",
+      "newPlatPlc": "서울특별시 마포구 월드컵북로 190",
+      "bldNm": "성산시영아파트 1동",
+      "dongNm": "1동",
+      "regstrGbCdNm": "집합",
+      "regstrKindCdNm": "표제부",
+      "mainPurpsCdNm": "공동주택",
+      "etcPurps": "아파트",
+      "totArea": "4602.4",
+      "platArea": "1520.3",
+      "grndFlrCnt": "5",
+      "ugrndFlrCnt": "0",
+      "useAprDay": "19860630",
+      "sigunguCd": "11440",
+      "bjdongCd": "12500",
+      "platGbCd": "0",
+      "bun": "0200",
+      "ji": "0001"
+    },
+    {
+      "rnum": "2",
+      "platPlc": "서울특별시 마포구 성산동 200-1",
+      "newPlatPlc": "서울특별시 마포구 월드컵북로 190",
+      "bldNm": "성산시영아파트 14동",
+      "dongNm": "14동",
+      "regstrGbCdNm": "집합",
+      "regstrKindCdNm": "표제부",
+      "mainPurpsCdNm": "공동주택",
+      "etcPurps": "아파트",
+      "totArea": "12849.98",
+      "platArea": "3210.5",
+      "grndFlrCnt": "14",
+      "ugrndFlrCnt": "1",
+      "useAprDay": "19860630",
+      "sigunguCd": "11440",
+      "bjdongCd": "12500",
+      "platGbCd": "0",
+      "bun": "0200",
+      "ji": "0001"
+    }
+  ],
+  "source": {
+    "data_go_kr_dataset": "15134735",
+    "operation": "getBrTitleInfo",
+    "response_format": "JSON"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "items": [
+    {
+      "name": "성산시영(대우)",
+      "district": "성산동",
+      "area_m2": 50.03,
+      "floor": 9,
+      "price_10k": 92000,
+      "deal_date": "2025-05-17",
+      "build_year": 1986,
+      "deal_type": "중개거래"
+    },
+    {
+      "name": "마포태영",
+      "district": "도화동",
+      "area_m2": 84.87,
+      "floor": 6,
+      "price_10k": 143000,
+      "deal_date": "2025-05-02",
+      "build_year": 1999,
+      "deal_type": "중개거래"
+    },
+    {
+      "name": "가격누락행",
+      "district": "성산동",
+      "area_m2": 59.9,
+      "floor": 3,
+      "deal_date": "2025-05-20",
+      "build_year": 1995
+    },
+    {
+      "name": "필드누락행",
+      "district": "성산동",
+      "price_10k": 71000,
+      "deal_date": "2025-05-11"
+    }
+  ]
+}

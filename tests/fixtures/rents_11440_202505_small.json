@@ -1,0 +1,36 @@
+{
+  "items": [
+    {
+      "name": "성산시영(대우)",
+      "district": "성산동",
+      "area_m2": 50.03,
+      "floor": 2,
+      "deposit_10k": 30000,
+      "monthly_rent_10k": 0,
+      "contract_type": "",
+      "deal_date": "2025-05-23",
+      "build_year": 1986
+    },
+    {
+      "name": "신촌금호",
+      "district": "창전동",
+      "area_m2": 84.86,
+      "floor": 18,
+      "deposit_10k": 30000,
+      "monthly_rent_10k": 100,
+      "contract_type": "신규",
+      "deal_date": "2025-05-11",
+      "build_year": 2001
+    },
+    {
+      "name": "보증금누락행",
+      "district": "성산동",
+      "area_m2": 59.9,
+      "floor": 4,
+      "monthly_rent_10k": 80,
+      "contract_type": "갱신",
+      "deal_date": "2025-05-19",
+      "build_year": 2003
+    }
+  ]
+}

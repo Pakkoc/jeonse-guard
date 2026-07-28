@@ -1,0 +1,47 @@
+{
+  "documents": [
+    {
+      "address": {
+        "address_name": "서울 마포구 성산동 200-1",
+        "b_code": "1144012500",
+        "h_code": "1144073000",
+        "main_address_no": "200",
+        "mountain_yn": "N",
+        "region_1depth_name": "서울",
+        "region_2depth_name": "마포구",
+        "region_3depth_h_name": "성산2동",
+        "region_3depth_name": "성산동",
+        "sub_address_no": "1",
+        "x": "126.907884176679",
+        "y": "37.5683789216338"
+      },
+      "address_name": "서울 마포구 성산동 200-1",
+      "address_type": "REGION_ADDR",
+      "road_address": null,
+      "x": "126.907884176679",
+      "y": "37.5683789216338"
+    },
+    {
+      "address": {
+        "address_name": "서울 마포구 성산동 200-2",
+        "b_code": "1144012500",
+        "h_code": "1144073000",
+        "main_address_no": "200",
+        "mountain_yn": "N",
+        "region_1depth_name": "서울",
+        "region_2depth_name": "마포구",
+        "region_3depth_h_name": "성산2동",
+        "region_3depth_name": "성산동",
+        "sub_address_no": "2",
+        "x": "126.908457",
+        "y": "37.568912"
+      },
+      "address_name": "서울 마포구 성산동 200-2",
+      "address_type": "REGION_ADDR",
+      "road_address": null,
+      "x": "126.908457",
+      "y": "37.568912"
+    }
+  ],
+  "meta": { "is_end": true, "pageable_count": 2, "total_count": 2 }
+}

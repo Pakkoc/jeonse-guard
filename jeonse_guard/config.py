@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 DEFAULT_PROXY_BASE = "https://k-skill-proxy.nomadamas.org"
-USER_AGENT = "jeonse-guard/0.1 (+https://github.com/qkrtjdgh751014/jeonse-guard)"
+USER_AGENT = "jeonse-guard/0.1 (+https://github.com/Pakkoc/jeonse-guard)"
 DEFAULT_TIMEOUT = 25  # seconds
 
 
