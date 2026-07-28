@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jeonse-guard — 주소 한 줄로 전세 안전진단</title>
+<meta name="description" content="주소 한 줄로 전세 계약 전 안전진단, 계약 후엔 보증금 워치독 — 무료 공공데이터 기반 오픈소스">
+</head>
+<body>
+
+<style>
+  :root {
+    --paper: #F7FAF8;
+    --card: #FFFFFF;
+    --ink: #17211D;
+    --muted: #5B6B64;
+    --accent: #146B57;
+    --accent-soft: #E3F0EB;
+    --warn: #A9650F;
+    --warn-soft: #F7EEDF;
+    --line: #DCE5E0;
+    --code-bg: #10201A;
+    --code-ink: #D7E8E0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0F1613;
+      --card: #16201B;
+      --ink: #E6EFEA;
+      --muted: #93A39B;
+      --accent: #4CC2A4;
+      --accent-soft: #1B2E27;
+      --warn: #E0A33E;
+      --warn-soft: #2E2415;
+      --line: #24312B;
+      --code-bg: #0B120F;
+      --code-ink: #C4D8CF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0F1613;
+    --card: #16201B;
+    --ink: #E6EFEA;
+    --muted: #93A39B;
+    --accent: #4CC2A4;
+    --accent-soft: #1B2E27;
+    --warn: #E0A33E;
+    --warn-soft: #2E2415;
+    --line: #24312B;
+    --code-bg: #0B120F;
+    --code-ink: #C4D8CF;
+  }
+  :root[data-theme="light"] {
+    --paper: #F7FAF8;
+    --card: #FFFFFF;
+    --ink: #17211D;
+    --muted: #5B6B64;
+    --accent: #146B57;
+    --accent-soft: #E3F0EB;
+    --warn: #A9650F;
+    --warn-soft: #F7EEDF;
+    --line: #DCE5E0;
+    --code-bg: #10201A;
+    --code-ink: #D7E8E0;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    line-height: 1.7;
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 56px 22px 90px; }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 999px;
+    padding: 4px 14px;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-size: clamp(34px, 6vw, 50px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  h1 .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); letter-spacing: -0.04em; }
+  .tagline { font-size: 20px; color: var(--muted); margin: 0 0 22px; text-wrap: balance; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+  .chip {
+    font-size: 13.5px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent);
+    border-radius: 999px; padding: 5px 13px;
+  }
+  .repo-link {
+    display: inline-block;
+    font-weight: 700; font-size: 15px;
+    color: var(--paper); background: var(--accent);
+    text-decoration: none; border-radius: 10px;
+    padding: 10px 20px;
+  }
+  .repo-link:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  section { margin-top: 72px; }
+  h2 {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.01em;
+    margin: 0 0 8px; text-wrap: balance;
+  }
+  .kicker {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
+  }
+  h3 { font-size: 18.5px; font-weight: 700; margin: 26px 0 8px; }
+  p { margin: 10px 0; }
+  .lead { font-size: 17.5px; }
+  a { color: var(--accent); }
+
+  .term {
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    background: #131C22; margin-top: 30px;
+    box-shadow: 0 12px 34px rgba(10, 40, 30, 0.14);
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 7px;
+    padding: 11px 15px; background: #0C1318; border-bottom: 1px solid #22303A;
+  }
+  .term-bar span { width: 11px; height: 11px; border-radius: 999px; background: #33424D; }
+  .term-bar em {
+    margin-left: 8px; font-style: normal; font-size: 12.5px; color: #6E8291;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .term-body {
+    margin: 0; padding: 18px 20px; overflow-x: auto;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 13px; line-height: 1.75; color: #C7D6DE;
+  }
+  .t-prompt { color: #5B8DA8; }
+  .t-cmd { color: #E3EDF2; font-weight: 600; }
+  .t-h { color: #8FB8CE; font-weight: 700; }
+  .t-dim { color: #5E7280; }
+  .t-warn { color: #E8B04B; font-weight: 700; }
+  .t-ok { color: #7DD3AE; font-weight: 600; }
+  .demo-caption { font-size: 14px; color: var(--muted); margin-top: 10px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .card h4 { margin: 0 0 6px; font-size: 16.5px; font-weight: 700; }
+  .card p { margin: 0; font-size: 15px; color: var(--muted); }
+  .card .big { font-size: 15.5px; color: var(--ink); }
+  .card-label {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    border-radius: 6px; padding: 2px 9px; margin-bottom: 10px;
+  }
+  .label-fact { background: var(--accent-soft); color: var(--accent); }
+  .label-warn { background: var(--warn-soft); color: var(--warn); }
+  .label-muted { background: var(--paper); color: var(--muted); border: 1px solid var(--line); }
+
+  .callout {
+    border-left: 4px solid var(--warn);
+    background: var(--warn-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 16px 20px; margin-top: 24px;
+  }
+  .callout strong { color: var(--warn); }
+  .callout p { margin: 4px 0; font-size: 15.5px; }
+
+  .principle {
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 16px 20px; margin-top: 24px;
+  }
+  .principle p { margin: 4px 0; font-size: 15.5px; }
+
+  .diagram {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px; margin-top: 18px; overflow-x: auto;
+  }
+  .diagram-title { font-size: 14px; font-weight: 700; color: var(--muted); margin: 0 0 6px; letter-spacing: 0.04em; }
+  pre.mermaid { margin: 0; display: flex; justify-content: center; }
+
+  table { border-collapse: collapse; width: 100%; margin-top: 18px; font-size: 15px; }
+  .table-wrap { overflow-x: auto; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
+  td code, p code, li code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.88em; background: var(--accent-soft); color: var(--accent);
+    border-radius: 5px; padding: 1.5px 6px;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 22px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 18px;
+  }
+  .stat .num {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 26px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em;
+  }
+  .stat .desc { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+
+  ol.steps { padding-left: 0; margin: 16px 0 0; counter-reset: step; list-style: none; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative; padding: 0 0 18px 46px;
+  }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 30px; height: 30px; border-radius: 999px;
+    background: var(--accent); color: var(--paper);
+    font-weight: 700; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  pre.shell {
+    background: var(--code-bg); color: var(--code-ink);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 13.5px; line-height: 1.65;
+    border-radius: 12px; padding: 15px 18px; overflow-x: auto; margin: 12px 0 0;
+  }
+  pre.shell .cmd { color: #8FE3C8; }
+
+  .quote {
+    font-size: 16px; color: var(--muted);
+    border-left: 3px solid var(--line); padding-left: 16px; margin: 18px 0 0; font-style: normal;
+  }
+
+  footer {
+    margin-top: 80px; padding-top: 26px; border-top: 1px solid var(--line);
+    font-size: 14px; color: var(--muted);
+  }
+  footer .disclaimer {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 16px;
+  }
+</style>
+
+<main>
+  <header>
+    <span class="eyebrow">GPTers 23기 · 1주차 케이스 스터디</span>
+    <h1><span class="mono">jeonse-guard</span><br>주소 한 줄로 전세 안전진단</h1>
+    <p class="tagline">계약 전엔 30초 안전진단 리포트, 계약 후엔 매일 아침 보증금 워치독.<br>전부 무료 공공데이터로, 로그인 없이.</p>
+    <div class="chips">
+      <span class="chip">무료 공공데이터</span>
+      <span class="chip">로그인·API 키 불필요</span>
+      <span class="chip">오픈소스 MIT</span>
+      <span class="chip">AI 에이전트가 하루 만에 제작</span>
+    </div>
+    <a class="repo-link" href="https://github.com/Pakkoc/jeonse-guard" target="_blank" rel="noopener">GitHub에서 보기 →</a>
+
+    <div class="term" style="margin-top: 30px;">
+      <img src="demo.gif" alt="jeonse-guard scan 실행 데모 — 실거래 조회 후 전세가율과 근린생활시설 경고가 담긴 리포트 출력" style="display:block; width:100%; height:auto;" loading="lazy">
+    </div>
+    <div class="term">
+      <div class="term-bar"><span></span><span></span><span></span><em>jeonse-guard</em></div>
+      <pre class="term-body"><span class="t-prompt">$</span> <span class="t-cmd">jeonse-guard scan "서울 마포구 성산동 200-1" --name 성산시영 --area 50 --deposit 30000</span>
+
+<span class="t-h"># 전세 안전진단 리포트 — 서울 마포구 성산동 200-1</span>
+
+<span class="t-dim">| 항목            | 내용                                       |</span>
+<span class="t-dim">| --------------- | ------------------------------------------ |</span>
+| 대장 주용도     | <span class="t-warn">제1종근린생활시설</span>                          |
+| 매매 중위가     | 122,750만원 <span class="t-dim">(표본 98건 · 12/12개월 수집)</span>   |
+| 전세가율        | <span class="t-ok">30,000만원 ÷ 122,750만원 = 24.4%</span>          |
+
+<span class="t-h">## 검토 신호</span>
+- <span class="t-warn">[warn] 건축물대장 용도에 근린생활시설 포함</span>
+  근거: 대장 주용도 원문 '제1종근린생활시설'
+
+<span class="t-h">## 직접 확인 체크리스트</span> <span class="t-dim">(자동 조회 불가)</span>
+- [ ] 등기부등본 근저당 · 선순위보증금 · 전입세대 열람 …
+
+<span class="t-dim">[요약] 검토 신호 1건 (warn 1건)</span></pre>
+    </div>
+    <p class="demo-caption">실제 실행 장면(위)과 결과 요약(아래) — 서울 마포구의 한 주소를 진단하자 전세가율 산출과 함께 <strong>근린생활시설 경고</strong>가 발화됐습니다. 실행 영상은 <a href="https://github.com/Pakkoc/jeonse-guard#readme" target="_blank" rel="noopener">GitHub README</a>에서 볼 수 있습니다.</p>
+  </header>
+
+  <section>
+    <div class="kicker">Why</div>
+    <h2>왜 만들었나</h2>
+    <p class="lead">주변에 전세사기를 당한 친구가 있습니다. 사고가 난 뒤 되짚어보니, <strong>계약 전에 확인할 수 있었던 신호들이 분명히 있었습니다.</strong></p>
+    <p>전세 계약 전에 확인해야 할 정보는 사실 전부 공개돼 있습니다. 문제는 그 정보가 <strong>여러 사이트에 흩어져 있고, 용어가 어렵고, 애초에 뭘 봐야 하는지 모른다</strong>는 것입니다.</p>
+    <div class="cards">
+      <div class="card">
+        <h4>흩어져 있다</h4>
+        <p>실거래가는 국토부, 건물 용도는 정부24, 권리관계는 등기소 — 사이트가 전부 다릅니다.</p>
+      </div>
+      <div class="card">
+        <h4>용어가 어렵다</h4>
+        <p>전세가율, 근린생활시설, 선순위보증금… 처음 계약하는 사람에게는 외국어입니다.</p>
+      </div>
+      <div class="card">
+        <h4>뭘 봐야 하는지 모른다</h4>
+        <p>가장 무서운 건 "확인 안 한 것이 있는 줄도 몰랐다"는 상황입니다.</p>
+      </div>
+    </div>
+    <p style="margin-top: 22px;">미리 확인만 제대로 해도 막을 수 있는 일이라면, <strong>그 확인을 AI가 대신해주면 어떨까?</strong> 그래서 주소 한 줄만 넣으면 공공데이터를 교차 조회해 30초 만에 안전진단 리포트를 만들어주는 도구를 만들었습니다.</p>
+  </section>
+
+  <section>
+    <div class="kicker">What</div>
+    <h2>무엇을 확인해주나</h2>
+
+    <div class="cards">
+      <div class="card">
+        <span class="card-label label-warn">신호 1 · 깡통전세</span>
+        <h4>전세가율</h4>
+        <p class="big">보증금 ÷ 집의 실제 매매가. <strong>80%를 넘으면</strong> 집이 경매로 넘어가도 보증금을 다 돌려받지 못할 수 있습니다. 최근 12개월 실거래에서 <em>같은 단지·비슷한 면적</em>만 골라 계산합니다.</p>
+      </div>
+      <div class="card">
+        <span class="card-label label-warn">신호 2 · 근생빌라</span>
+        <h4>건물의 진짜 정체</h4>
+        <p class="big">건축물대장의 용도가 "주택"이 아니라 <strong>"근린생활시설"(상가)</strong>인 건물이 있습니다. 겉보기엔 빌라인데 서류상 상가라 보증보험 가입이 막힐 수 있습니다.</p>
+      </div>
+      <div class="card">
+        <span class="card-label label-muted">자동화 불가 항목</span>
+        <h4>직접 확인 체크리스트</h4>
+        <p class="big">등기부 근저당, 선순위보증금, 전입세대 열람처럼 자동 조회가 불가능한 항목은 정직하게 <strong>"직접 확인하세요"</strong> 목록으로 안내합니다.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p><strong>실제 사례</strong> — 데모 주소(마포구 성산동 200-1)는 전세가율이 24.4%로 아주 낮아 겉보기엔 문제가 없었습니다. 그런데 건축물대장을 떼보니 주용도가 <strong>"제1종근린생활시설"</strong>. 아파트 단지 바로 옆 근생 건물이었습니다.</p>
+      <p>"수치가 좋아 보여도 대장까지 확인해야 하는 이유"를 도구가 실데이터로 증명한 순간입니다.</p>
+    </div>
+
+    <div class="principle">
+      <p><strong>판정 철학</strong> — 이 도구는 절대 "안전합니다"라고 말하지 않습니다. <strong>사실(수치+출처) → 근거 있는 검토 신호 → 체크리스트</strong>의 3층 구조만 보여줍니다. 전세사기 도구에서 가장 위험한 것은 잘못된 안심이기 때문입니다.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">How it runs</div>
+    <h2>어떻게 굴러가나</h2>
+    <p>jeonse-guard에는 사람이 지켜보지 않아도 알아서 도는 <strong>자동 루프가 두 개</strong> 있습니다.</p>
+
+    <div class="diagram">
+      <p class="diagram-title">① 계약 전 — 원샷 진단 파이프라인 (약 30초)</p>
+      <pre class="mermaid">
+flowchart LR
+    A["주소 입력"] --> B["주소 확정<br>카카오 지오코딩"]
+    B --> C["실거래 수집<br>매매·전월세 12개월"]
+    C --> D["전세가율 산출<br>내 단지·면적대 매칭"]
+    D --> E["건축물대장<br>근생 감지"]
+    E --> F["검토 신호 평가"]
+    F --> G["리포트 발행"]
+      </pre>
+    </div>
+    <p>핵심 설계는 <strong>실패 강등</strong>입니다. 어느 한 단계가 실패해도(예: 대장 API 오류) 전체가 죽지 않고, 그 항목만 "확인 불가 + 사유"로 표기한 채 나머지로 리포트를 완성합니다. 자동화가 오래 굴러가려면 부분 실패를 견디는 구조가 필수입니다.</p>
+
+    <div class="diagram">
+      <p class="diagram-title">② 계약 후 — 보증금 워치독 (매일 아침 7시, GitHub 무료 서버)</p>
+      <pre class="mermaid">
+flowchart LR
+    CRON["매일 07:00<br>GitHub Actions"] --> SCAN["등록된 집<br>재진단"]
+    SCAN --> DIFF{"어제와<br>달라졌나?"}
+    DIFF -->|"신규 실거래 · 전세가율 80% 돌파 · 대장 변경"| ISSUE["GitHub Issue 알림<br>(이메일로 도착)"]
+    DIFF -->|"변화 없음"| QUIET["조용히 기록만"]
+    ISSUE --> COMMIT["스냅샷·리포트<br>자동 커밋"]
+    QUIET --> COMMIT
+      </pre>
+    </div>
+    <p>변화가 있을 때만 알리고, 없으면 침묵합니다. 내 컴퓨터를 켜둘 필요가 없고, 결과가 매일 저장소에 자동 커밋되어 <strong>"스스로 갱신되는 살아있는 저장소"</strong>가 됩니다.</p>
+
+    <h3>사용한 k-skill 스킬</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>스킬</th><th>하는 일</th><th>로그인/키</th></tr></thead>
+        <tbody>
+          <tr><td><code>real-estate-search</code></td><td>국토교통부 매매·전월세 실거래가 조회</td><td>불필요</td></tr>
+          <tr><td><code>building-register-search</code></td><td>건축물대장 표제부 — 주용도·층수·사용승인일</td><td>불필요*</td></tr>
+          <tr><td><code>kakao-map</code> 지오코딩</td><td>주소 → 법정동 코드·지번 변환</td><td>불필요</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="quote">전부 k-skill-proxy라는 공용 서버를 경유해 사용자는 키 발급이 필요 없습니다. *건축물대장만 공공데이터포털 무료 키(3분 발급)가 있으면 더 안정적입니다. 판정 철학과 실패 강등 설계는 k-skill의 <code>biz-health-check</code>에서 배웠습니다.</p>
+  </section>
+
+  <section>
+    <div class="kicker">How it was built</div>
+    <h2>만드는 과정 — 구현과 검증도 AI가</h2>
+    <p>사람이 한 일은 <strong>방향 결정과 검수</strong>뿐입니다. 조사·구현·검증은 AI 에이전트들이 병렬로 했고, 하루 만에 GitHub 공개까지 갔습니다.</p>
+    <ol class="steps">
+      <li><strong>계약서 먼저</strong> — 코드보다 설계 계약 문서(CONTRACTS.md)를 먼저 작성. 모듈 5개의 입출력·금지사항을 못 박았습니다.</li>
+      <li><strong>병렬 구현 + 적대적 리뷰</strong> — AI 5개가 계약서만 보고 모듈 5개를 동시에 구현하고, 각 모듈이 완성되는 즉시 다른 AI가 <em>"이 코드를 믿지 말고 결함을 찾아라"</em>라는 지시로 검증. 배포 전에 심각한 결함 4건을 잡아 그 자리에서 수정했습니다.</li>
+      <li><strong>정직성 검증</strong> — 실사용 중 "같은 조건인데 표본 수가 달라지는" 현상을 발견하고, 데이터 수집이 부분 실패하면 리포트에 "12개월 중 7개월만 수집"이라 표기하도록 패치했습니다.</li>
+    </ol>
+    <div class="stats">
+      <div class="stat"><div class="num">10</div><div class="desc">빌드에 참여한 AI 에이전트</div></div>
+      <div class="stat"><div class="num">4</div><div class="desc">배포 전 잡은 심각한 결함</div></div>
+      <div class="stat"><div class="num">76</div><div class="desc">전부 통과한 테스트</div></div>
+      <div class="stat"><div class="num">1일</div><div class="desc">설계부터 공개까지</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">Try it</div>
+    <h2>사용법 — 셋 중 편한 걸로</h2>
+
+    <h3>방법 1 · AI에게 말로 시키기 (가장 쉬움)</h3>
+    <p>Claude Code 사용자는 두 줄로 설치하고, 그다음엔 그냥 말하면 됩니다.</p>
+    <pre class="shell"><span class="cmd">/plugin marketplace add Pakkoc/jeonse-guard</span>
+<span class="cmd">/plugin install jeonse-guard@jeonse-guard</span></pre>
+    <p class="quote">"성산시영 아파트 50㎡ 전세 3억에 들어가려는데 괜찮은지 봐줘. 주소는 서울 마포구 성산동 200-1이야" — 이렇게 말하면 AI가 설치·진단·해석까지 알아서 합니다.</p>
+
+    <h3>방법 2 · 브라우저만으로 (설치 없음)</h3>
+    <ol class="steps">
+      <li>GitHub에서 <a href="https://github.com/Pakkoc/jeonse-guard" target="_blank" rel="noopener">Pakkoc/jeonse-guard</a> 를 <strong>Fork</strong></li>
+      <li>내 저장소의 <strong>Actions 탭</strong>에서 워크플로 활성화</li>
+      <li><strong>scan → Run workflow</strong> 에 주소·보증금 입력 → 1분 뒤 리포트 확인</li>
+      <li>계약 후 감시는 <code>watchlist.toml</code>에 내 집 주소만 적어두면 매일 자동으로 돕니다</li>
+    </ol>
+
+    <h3>방법 3 · 터미널 (개발자용)</h3>
+    <pre class="shell"><span class="cmd">pip install git+https://github.com/Pakkoc/jeonse-guard.git</span>
+<span class="cmd">jeonse-guard scan "서울 마포구 성산동 200-1" --name 성산시영 --area 50 --deposit 30000</span></pre>
+  </section>
+
+  <footer>
+    <div class="disclaimer">
+      이 도구의 리포트는 공공데이터 기반 <strong>참고 자료</strong>이며 계약 판단의 근거가 아닙니다. 계약 전 등기부등본 확인과 전문가 상담은 반드시 직접 하세요. 도구의 역할은 "확인해야 할 것을 빠뜨리지 않게 돕는 것"까지입니다.
+    </div>
+    <p>GPTers 23기 1주차 케이스 스터디 · 저장소 <a href="https://github.com/Pakkoc/jeonse-guard" target="_blank" rel="noopener">github.com/Pakkoc/jeonse-guard</a> · 데이터 출처: 국토교통부 실거래가 공개시스템, 건축물대장(공공데이터포털 15134735), 카카오 로컬 — <a href="https://github.com/NomaDamas/k-skill" target="_blank" rel="noopener">NomaDamas/k-skill</a> (MIT) 경유</p>
+  </footer>
+</main>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "neutral" });
+</script>
+</body>
+</html>
