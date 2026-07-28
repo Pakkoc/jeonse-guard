@@ -1,0 +1,93 @@
+# 보증금 워치독 — 매일 07:00 KST에 watchlist 전체를 재스캔해서
+# 변화 이벤트를 Issue로 만들고 스냅샷·리포트를 커밋한다.
+# cli watch는 stdout에 한 줄당 이벤트 JSON 하나(kind/entry_id/title/detail)를 출력한다.
+name: watch
+
+on:
+  schedule:
+    - cron: "0 22 * * *" # 22:00 UTC = 다음 날 07:00 KST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: reports-commit
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: watchlist 확인
+        id: check
+        run: |
+          if [ -f watchlist.toml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "watchlist.toml이 없어 워치독을 건너뜁니다. watchlist.example.toml을 복사해 만들어 주세요." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Python 3.12 설치
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 패키지 설치
+        if: steps.check.outputs.exists == 'true'
+        run: pip install -e .
+
+      - name: 워치독 실행
+        if: steps.check.outputs.exists == 'true'
+        env:
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+        run: |
+          # 기본 셸(bash -e)에는 pipefail이 없어 tee가 cli 실패를 가린다 — 명시적으로 켠다
+          set -o pipefail
+          python -m jeonse_guard.cli watch \
+            --watchlist watchlist.toml --snapshots snapshots --reports reports \
+            | tee events.jsonl
+
+      - name: 이벤트를 Issue로 생성
+        if: steps.check.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 실패해도 루프를 계속 돌아 나머지 이벤트를 시도하고, 마지막에 실패로 마감한다.
+          # (fork는 Issues 기능이 기본 비활성이라 gh issue create가 실패할 수 있다)
+          count=0
+          failed=0
+          while IFS= read -r event; do
+            if [ -z "$event" ]; then continue; fi
+            title=$(jq -r '.title' <<< "$event")
+            body=$(jq -r '"\(.detail)\n\n---\n_kind: \(.kind) · entry: \(.entry_id)_"' <<< "$event")
+            if gh issue create --title "$title" --body "$body" < /dev/null; then
+              count=$((count + 1))
+            else
+              failed=$((failed + 1))
+            fi
+          done < events.jsonl
+          echo "생성한 Issue: ${count}건" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$failed" -gt 0 ]; then
+            echo "Issue 생성 실패 ${failed}건 — fork는 Issues가 기본 비활성입니다. Settings → General → Features에서 Issues를 켜 주세요." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: 스냅샷·리포트 커밋 # 이벤트 0건이어도, Issue 생성이 실패해도 스냅샷 변경은 커밋한다
+        if: ${{ !cancelled() && steps.check.outputs.exists == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snapshots/ reports/
+          if git diff --cached --quiet; then
+            echo "커밋할 변경 없음"
+          else
+            git commit -m "watch: 스냅샷·리포트 갱신 ($(TZ=Asia/Seoul date +%F))"
+            git push || (git pull --rebase && git push)
+          fi

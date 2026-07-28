@@ -1,0 +1,78 @@
+# 일회성 안전진단 — 브라우저에서 Run workflow로 주소를 넣으면
+# 리포트를 생성해 Summary에 출력하고 reports/에 커밋한다.
+name: scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      address:
+        description: "지번 주소 (예: 서울 마포구 성산동 200-1)"
+        required: true
+        type: string
+      deposit:
+        description: "전세보증금 (만원, 예: 30000 = 3억)"
+        required: false
+        type: string
+      name:
+        description: "단지/건물명 필터 (예: 성산시영)"
+        required: false
+        type: string
+      area:
+        description: "전용면적 ㎡ (예: 50)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reports-commit
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 패키지 설치
+        run: pip install -e .
+
+      - name: 안전진단 실행
+        env:
+          ADDRESS: ${{ inputs.address }}
+          DEPOSIT: ${{ inputs.deposit }}
+          UNIT_NAME: ${{ inputs.name }}
+          AREA: ${{ inputs.area }}
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+        run: |
+          args=(scan "$ADDRESS" --out reports)
+          if [ -n "$DEPOSIT" ]; then args+=(--deposit "$DEPOSIT"); fi
+          if [ -n "$UNIT_NAME" ]; then args+=(--name "$UNIT_NAME"); fi
+          if [ -n "$AREA" ]; then args+=(--area "$AREA"); fi
+          python -m jeonse_guard.cli "${args[@]}"
+
+      - name: 리포트를 실행 요약에 출력
+        run: |
+          latest=$(ls -t reports/*.md | head -n 1)
+          cat "$latest" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 리포트 커밋
+        env:
+          ADDRESS: ${{ inputs.address }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/
+          if git diff --cached --quiet; then
+            echo "커밋할 변경 없음"
+          else
+            git commit -m "scan: ${ADDRESS} 진단 리포트"
+            git push || (git pull --rebase && git push)
+          fi
