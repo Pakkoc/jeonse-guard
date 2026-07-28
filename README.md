@@ -95,6 +95,21 @@ $ jeonse-guard scan "서울 마포구 성산동 200-1" --deposit 30000
 
 키가 있으면 프록시 실패 시 자동으로 공공데이터포털 직접 호출 모드로 전환됩니다. (`KSKILL_BUILDING_REGISTER_API_KEY`가 설정돼 있으면 그쪽을 우선 사용합니다.)
 
+## AI 에이전트로 말해서 쓰기 (가장 쉬운 방법)
+
+터미널 명령이 낯설다면, AI 코딩 에이전트에게 시키면 됩니다. 이 저장소는 Agent Skill([SKILL.md](SKILL.md))을 내장하고 있어 Claude Code에서 플러그인으로 설치할 수 있습니다:
+
+```
+/plugin marketplace add Pakkoc/jeonse-guard
+/plugin install jeonse-guard@jeonse-guard
+```
+
+설치 후에는 자연어로 말하면 끝입니다:
+
+> "성산시영 아파트 50㎡ 전세 3억에 들어가려는데 괜찮은지 봐줘. 주소는 서울 마포구 성산동 200-1이야"
+
+에이전트가 도구 설치부터 진단 실행, 리포트 해석(단정 없이 사실·신호·체크리스트로), 워치독 설정 안내까지 대신합니다.
+
 ## Fork 해서 브라우저만으로 쓰기 (GitHub Actions)
 
 로컬에 Python이 없어도 됩니다. Fork 한 번이면 브라우저에서 진단하고, 매일 아침 워치독이 돌아갑니다.

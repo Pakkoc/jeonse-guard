@@ -1,0 +1,13 @@
+{
+  "name": "jeonse-guard",
+  "owner": {
+    "name": "Pakkoc"
+  },
+  "plugins": [
+    {
+      "name": "jeonse-guard",
+      "source": "./",
+      "description": "전세 계약 전 안전진단 + 계약 후 보증금 워치독 — 전세가율·근생빌라·실거래 감시"
+    }
+  ]
+}
