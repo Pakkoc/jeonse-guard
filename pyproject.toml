@@ -1,0 +1,18 @@
+[project]
+name = "jeonse-guard"
+version = "0.1.0"
+description = "전세 계약 전 안전진단 + 계약 후 보증금 워치독 — 공공데이터 교차 진단 하네스"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+jeonse-guard = "jeonse_guard.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["jeonse_guard*"]
