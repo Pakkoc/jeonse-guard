@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+.pytest_cache/
+dist/
+.venv/
+*.egg-info/
+
+# watch 워크플로 중간 산출물
+events.jsonl
