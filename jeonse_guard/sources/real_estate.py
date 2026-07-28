@@ -15,7 +15,7 @@ from typing import Any, Callable, Optional
 
 from .. import net
 from ..errors import SourceError
-from ..models import Deal, RentDeal
+from ..models import Deal, MonthlyFetch, RentDeal
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
@@ -44,10 +44,11 @@ def recent_months(n: int, *, today: datetime.date | None = None) -> list[str]:
 
 def fetch_trades(
     lawd_cd: str, months: list[str], *, asset_type: str, base: str, timeout: int = 25
-) -> list[Deal]:
-    """매매 실거래를 월별로 순회 조회해 합산한다.
+) -> MonthlyFetch:
+    """매매 실거래를 월별로 순회 조회해 합산한다 (items는 Deal 목록).
 
     일부 달이 실패해도 나머지 달로 계속하고, 전부 실패하면 SourceError.
+    부분 실패는 MonthlyFetch의 months_ok/failed_months에 정직하게 기록된다.
     price_10k 없는 행은 버리고, 나머지 필드 누락은 None으로 관대하게 처리한다.
     """
     return _fetch_months("trade", lawd_cd, months, asset_type, base, timeout, _parse_deal)
@@ -55,10 +56,11 @@ def fetch_trades(
 
 def fetch_rents(
     lawd_cd: str, months: list[str], *, asset_type: str, base: str, timeout: int = 25
-) -> list[RentDeal]:
-    """전월세 실거래를 월별로 순회 조회해 합산한다.
+) -> MonthlyFetch:
+    """전월세 실거래를 월별로 순회 조회해 합산한다 (items는 RentDeal 목록).
 
     일부 달이 실패해도 나머지 달로 계속하고, 전부 실패하면 SourceError.
+    부분 실패는 MonthlyFetch의 months_ok/failed_months에 정직하게 기록된다.
     deposit_10k 없는 행은 버린다. monthly_rent_10k == 0이 전세다.
     """
     return _fetch_months("rent", lawd_cd, months, asset_type, base, timeout, _parse_rent)
@@ -75,7 +77,7 @@ def _fetch_months(
     base: str,
     timeout: int,
     parse: Callable[[dict], Any],
-) -> list:
+) -> MonthlyFetch:
     """월별 호출을 순회하며 items를 파싱·합산한다. 전 달 실패 시 SourceError."""
     if asset_type not in ASSET_TYPES:
         raise SourceError(f"지원하지 않는 asset_type: {asset_type} (허용: {', '.join(ASSET_TYPES)})")
@@ -103,7 +105,12 @@ def _fetch_months(
         raise SourceError(
             f"실거래 {kind} 조회 전체 실패: {len(failed)}개월 모두 실패 ({', '.join(failed)})"
         )
-    return rows
+    return MonthlyFetch(
+        items=rows,
+        months_requested=len(months),
+        months_ok=len(months) - len(failed),
+        failed_months=failed,
+    )
 
 
 def _parse_deal(item: dict) -> Optional[Deal]:

@@ -133,3 +133,21 @@ def test_report_no_signals_message():
     assert "검토 신호 0건" in markdown
     assert "생성된 검토 신호가 없습니다" in markdown
     assert DISCLAIMER in markdown
+
+
+def test_metrics_rows_show_month_coverage():
+    """월별 수집 성공 수가 있으면 '(N/12개월 수집)'으로 표기해 과장을 막는다."""
+    from jeonse_guard import report
+    from jeonse_guard.models import Metrics
+
+    metrics = Metrics(
+        trade_median_10k=100000, trade_sample=10,
+        deposit_median_10k=30000, jeonse_sample=5,
+        deposit_used_10k=30000, deposit_basis="입력값",
+        jeonse_ratio=0.3, match_scope="단지+면적", months_covered=12,
+        trade_months_ok=12, rent_months_ok=7,
+    )
+    rows = report._metrics_rows(metrics)
+    by_item = {item: source for item, _, source in rows}
+    assert "(12/12개월 수집)" in by_item["매매 중위가"]
+    assert "(7/12개월 수집)" in by_item["전세 중위 보증금"]

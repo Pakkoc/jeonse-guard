@@ -438,3 +438,81 @@ def test_snapshot_tracks_only_matched_scope_deals(env, monkeypatch):
     patch_scan(monkeypatch, result)
     run(env)
     assert len(read_snapshot(env)["deal_keys"]) == 1
+
+
+def test_partial_trades_fetch_preserves_baseline(env, monkeypatch):
+    """부분 수집(월 일부 실패) 실행이 기준선을 좁혀 미래 오탐을 만들지 않는다."""
+    deal_a, deal_b = make_deal(name="성산시영", price=52000), make_deal(name="성산시영", price=53000, floor=9)
+
+    # 1회차: 완전 수집으로 기준선 {A, B}
+    full = make_result(deals=[deal_a, deal_b])
+    full.sections["trades"] = models.SectionResult(
+        status="ok",
+        data=models.MonthlyFetch(items=[deal_a, deal_b], months_requested=12, months_ok=12),
+    )
+    patch_scan(monkeypatch, full)
+    run(env)
+    assert len(read_snapshot(env)["deal_keys"]) == 2
+
+    # 2회차: 부분 수집이라 B만 보임 → 기준선은 합집합으로 보존, 이벤트 없음
+    partial = make_result(deals=[deal_b])
+    partial.sections["trades"] = models.SectionResult(
+        status="ok",
+        data=models.MonthlyFetch(items=[deal_b], months_requested=12, months_ok=3,
+                                 failed_months=["202601"] * 9),
+    )
+    patch_scan(monkeypatch, partial)
+    assert run(env) == []
+    snap = read_snapshot(env)
+    assert len(snap["deal_keys"]) == 2  # A가 사라지지 않았다
+    assert snap["trades_partial"] is True
+
+    # 3회차: 수집 복구 → 기존 A·B가 신규로 오탐되지 않는다
+    patch_scan(monkeypatch, full)
+    assert run(env) == []
+
+
+def test_first_run_partial_does_not_establish_narrow_baseline(env, monkeypatch):
+    """합칠 직전 기준선이 없는 부분 수집(첫 실행)은 deal_keys를 None으로 남긴다 —
+
+    좁은 기준선을 세우면 다음 정상 실행에서 실패했던 달의 기존 거래 전부가
+    new_trade로 오탐되기 때문이다 (unavailable 실행과 같은 취급).
+    """
+    deal_a, deal_b = make_deal(name="성산시영", price=52000), make_deal(name="성산시영", price=53000, floor=9)
+
+    # 1회차(첫 실행)가 부분 수집: B만 보임 → 기준선을 세우지 않는다
+    partial = make_result(deals=[deal_b])
+    partial.sections["trades"] = models.SectionResult(
+        status="ok",
+        data=models.MonthlyFetch(items=[deal_b], months_requested=12, months_ok=3,
+                                 failed_months=["202506"]),
+    )
+    patch_scan(monkeypatch, partial)
+    assert run(env) == []
+    snap = read_snapshot(env)
+    assert snap["deal_keys"] is None
+    assert snap["trades_partial"] is True
+
+    # 2회차: 수집 복구 → 실패했던 달의 기존 A·B가 신규로 오탐되지 않고, 깨끗한 기준선 수립
+    full = make_result(deals=[deal_a, deal_b])
+    full.sections["trades"] = models.SectionResult(
+        status="ok",
+        data=models.MonthlyFetch(items=[deal_a, deal_b], months_requested=12, months_ok=12),
+    )
+    patch_scan(monkeypatch, full)
+    assert run(env) == []
+    snap = read_snapshot(env)
+    assert len(snap["deal_keys"]) == 2
+    assert snap["trades_partial"] is False
+
+    # 3회차: 진짜 신규 거래만 new_trade로 잡힌다 (기준선이 정상 동작)
+    deal_c = make_deal(name="성산시영", price=60000, date="2026-07-20")
+    grown = make_result(deals=[deal_a, deal_b, deal_c])
+    grown.sections["trades"] = models.SectionResult(
+        status="ok",
+        data=models.MonthlyFetch(items=[deal_a, deal_b, deal_c], months_requested=12, months_ok=12),
+    )
+    patch_scan(monkeypatch, grown)
+    events = run(env)
+    assert [e.kind for e in events] == ["new_trade"]
+    assert "1건" in events[0].title

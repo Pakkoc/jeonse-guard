@@ -1,7 +1,8 @@
 """검토 신호 평가 — 근거 수치·원문이 있을 때만 신호를 만들고 단정하지 않는다.
 
-MVP 4종 고정 (CONTRACTS.md A3 — 이 외 추가 금지):
-high_jeonse_ratio / nongsaeng_building / no_price_reference / section_unavailable.
+5종 고정 (CONTRACTS.md A3 — 이 외 추가 금지):
+high_jeonse_ratio / nongsaeng_building / no_price_reference / section_unavailable /
+partial_month_coverage.
 "안전", "위험 확정", "사기" 같은 단정 표현은 쓰지 않는다. 사실 서술만.
 """
 
@@ -91,5 +92,26 @@ def evaluate(
                 basis=f"확인 불가 섹션 {len(unavailable)}개 — {listed}",
             )
         )
+
+    # 5. partial_month_coverage (info): 월별 실거래 수집이 절반 이상 실패
+    #    부분 실패를 허용하는 설계의 대가 — 중위값이 적은 달로만 계산됐음을 알린다.
+    if metrics is not None and metrics.months_covered > 0:
+        degraded = []
+        for label, ok in (("매매", metrics.trade_months_ok), ("전세", metrics.rent_months_ok)):
+            if ok is not None and (metrics.months_covered - ok) * 2 >= metrics.months_covered:
+                degraded.append(f"{label} {ok}/{metrics.months_covered}개월")
+        if degraded:
+            found.append(
+                Signal(
+                    id="partial_month_coverage",
+                    level="info",
+                    title="실거래 월별 수집 절반 이상 실패",
+                    basis=(
+                        f"요청한 최근 {metrics.months_covered}개월 중 수집 성공: "
+                        + ", ".join(degraded)
+                        + " — 이 실행의 중위값·표본 수는 수집된 달 기준이라 신뢰도가 낮습니다."
+                    ),
+                )
+            )
 
     return found

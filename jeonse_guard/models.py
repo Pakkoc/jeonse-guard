@@ -86,6 +86,25 @@ class RentDeal:
 
 
 @dataclass
+class MonthlyFetch:
+    """월별 순회 수집 결과 — 부분 실패를 정직하게 기록한다.
+
+    일부 달 실패를 허용하는 설계(전체 실패보다 낫다)의 대가로, 몇 달이
+    실제로 수집됐는지를 함께 들고 다녀야 리포트가 "12개월"이라고
+    과장하지 않을 수 있다.
+    """
+
+    items: list
+    months_requested: int
+    months_ok: int
+    failed_months: list[str] = field(default_factory=list)
+
+    @property
+    def months_failed(self) -> int:
+        return self.months_requested - self.months_ok
+
+
+@dataclass
 class SectionResult:
     """파이프라인 각 섹션의 결과. 실패해도 전체를 막지 않는다 (실패 강등)."""
 
@@ -107,6 +126,8 @@ class Metrics:
     jeonse_ratio: Optional[float]     # deposit_used / trade_median (0.0~)
     match_scope: str                  # "단지+면적" | "단지" | "면적" | "지역구"
     months_covered: int
+    trade_months_ok: Optional[int] = None   # 매매 월별 수집 성공 수 (None = 정보 없음)
+    rent_months_ok: Optional[int] = None    # 전월세 월별 수집 성공 수 (None = 정보 없음)
 
 
 @dataclass

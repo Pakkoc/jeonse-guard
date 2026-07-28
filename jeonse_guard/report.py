@@ -73,11 +73,18 @@ def _building_rows(building: BuildingTitle) -> list[tuple[str, str, str]]:
 
 def _metrics_rows(metrics: Metrics) -> list[tuple[str, str, str]]:
     """산출 지표 → 사실 표 행 (전세가율 산출식 포함)."""
-    src = f"실거래 최근 {metrics.months_covered}개월"
+
+    def src(months_ok) -> str:
+        # 월별 수집 성공 수를 함께 표기해 "12개월"이 과장이 되지 않게 한다
+        base = f"실거래 최근 {metrics.months_covered}개월"
+        if months_ok is None:
+            return base
+        return f"{base} ({months_ok}/{metrics.months_covered}개월 수집)"
+
     rows = [
         ("매칭 범위", metrics.match_scope, "매칭 사다리: 단지+면적 → 단지 → 면적 → 지역구"),
-        ("매매 중위가", f"{_fmt_10k(metrics.trade_median_10k)} (표본 {metrics.trade_sample}건)", src),
-        ("전세 중위 보증금", f"{_fmt_10k(metrics.deposit_median_10k)} (표본 {metrics.jeonse_sample}건)", src),
+        ("매매 중위가", f"{_fmt_10k(metrics.trade_median_10k)} (표본 {metrics.trade_sample}건)", src(metrics.trade_months_ok)),
+        ("전세 중위 보증금", f"{_fmt_10k(metrics.deposit_median_10k)} (표본 {metrics.jeonse_sample}건)", src(metrics.rent_months_ok)),
         ("적용 보증금", f"{_fmt_10k(metrics.deposit_used_10k)} (기준: {metrics.deposit_basis})", "전세가율 분자"),
     ]
     if metrics.jeonse_ratio is not None:

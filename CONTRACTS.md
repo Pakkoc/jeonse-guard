@@ -43,10 +43,10 @@ def fetch_title(addr: ResolvedAddress, *, base: str, timeout: int = 30) -> Build
 
 ```python
 def recent_months(n: int, *, today: datetime.date | None = None) -> list[str]:  # 최신월부터 n개 "YYYYMM"
-def fetch_trades(lawd_cd: str, months: list[str], *, asset_type: str, base: str, timeout: int = 25) -> list[Deal]: ...
-def fetch_rents(lawd_cd: str, months: list[str], *, asset_type: str, base: str, timeout: int = 25) -> list[RentDeal]: ...
+def fetch_trades(lawd_cd: str, months: list[str], *, asset_type: str, base: str, timeout: int = 25) -> MonthlyFetch: ...
+def fetch_rents(lawd_cd: str, months: list[str], *, asset_type: str, base: str, timeout: int = 25) -> MonthlyFetch: ...
 ```
-월별 호출을 순회 합산한다. 한 달 호출이 실패해도 나머지 달로 계속하되, **전부** 실패하면 SourceError. 항목 필드 누락은 관대하게(None) 처리하되 price/deposit 없는 행은 버린다. `today=None`이면 KST 오늘. 신고 지연을 고려해 당월 포함.
+월별 호출을 순회 합산해 `MonthlyFetch(items, months_requested, months_ok, failed_months)`로 반환한다. 한 달 호출이 실패해도 나머지 달로 계속하되(부분 실패는 통계에 기록), **전부** 실패하면 SourceError. 항목 필드 누락은 관대하게(None) 처리하되 price/deposit 없는 행은 버린다. `today=None`이면 KST 오늘. 신고 지연을 고려해 당월 포함.
 테스트: `tests/test_real_estate.py` — recent_months 경계(1월→전년 12월), 부분 실패 합산, 전실패 SourceError, 전세/월세 구분.
 
 ### A3. `jeonse_guard/analysis.py` + `jeonse_guard/signals.py` + `jeonse_guard/report.py`
@@ -68,7 +68,8 @@ def compute_metrics(trades: list[Deal], rents: list[RentDeal], *,
 def evaluate(*, metrics: Metrics | None, building: BuildingTitle | None,
              sections: dict[str, SectionResult]) -> list[Signal]: ...
 ```
-신호 규칙 (MVP 4종 — 이 외 추가 금지, 각 basis에 산출 수치·원문 필수):
+신호 규칙 (5종 — 이 외 추가 금지, 각 basis에 산출 수치·원문 필수):
+- `partial_month_coverage` (info): trade/rent months_ok가 존재하고 실패 달이 절반 이상. basis에 "수집 성공 N/M개월" 형식.
 - `high_jeonse_ratio` (warn): ratio ≥ 0.80. basis에 "전세가율 N% = 보증금 X만원 ÷ 매매 중위 Y만원 (match_scope, 표본 N건)" 형식.
 - `nongsaeng_building` (warn): building.main_purps 또는 etc_purps에 "근린생활" 포함. basis에 대장 주용도 원문.
 - `no_price_reference` (info): trade_sample < 3. basis에 표본 수와 조회 범위.
@@ -80,7 +81,7 @@ def evaluate(*, metrics: Metrics | None, building: BuildingTitle | None,
 def render(result: ScanResult) -> str:  # Markdown
 ```
 구조: 제목(주소) → 생성시각·데이터 출처 → 요약(신호 n건/확인불가 m건) → 확인된 사실 표(대장·실거래 요약·전세가율 산출식) → 검토 신호 → **직접 확인 체크리스트**(등기부 근저당·선순위보증금·전입세대 열람·보증보험 가입 가능 여부·임대인 세금완납증명 — 자동화 불가 항목 고정 안내) → 면책 고정 문구("이 리포트는 공공데이터 기반 참고 자료이며 계약 판단의 근거가 아닙니다. 반드시 등기부등본과 전문가 확인을 거치세요.").
-테스트: `tests/test_analysis.py`, `tests/test_signals.py`, `tests/test_report.py` — 매칭 되돌림, 전세가율 산식, 신호 4종 각각 발화/비발화, 리포트에 면책 포함.
+테스트: `tests/test_analysis.py`, `tests/test_signals.py`, `tests/test_report.py` — 매칭 되돌림, 전세가율 산식, 신호 5종 각각 발화/비발화, 리포트에 면책 포함.
 
 ### A4. `jeonse_guard/watch.py` + `watchlist.example.toml`
 
@@ -105,7 +106,8 @@ area_m2 = 50.0               # 선택
 asset_type = "apartment"     # 선택, 기본 apartment
 ```
 동작: 항목마다 `pipeline.scan` 실행 → `snapshots/<id>.json`의 직전 스냅샷과 비교 → 이벤트 생성 → 새 스냅샷 저장(원자적 쓰기) → 리포트를 `reports/<id>-latest.md`로 갱신.
-스냅샷 스키마: `{"date", "deal_keys": [name|date|price|floor 해시 목록], "trade_median_10k", "jeonse_ratio", "building_fingerprint": main_purps+use_apr_day}`.
+스냅샷 스키마: `{"date", "deal_keys": [name|date|price|floor 해시 목록], "trades_partial": bool, "trade_median_10k", "jeonse_ratio", "building_fingerprint": main_purps+use_apr_day}`.
+부분 수집(trades_partial) 실행은 직전 스냅샷의 deal_keys와 **합집합**으로 저장한다 — 좁아진 기준선이 다음 정상 실행에서 기존 거래를 신규로 오탐시키는 것을 막는다. 합칠 직전 기준선이 없으면(첫 실행이거나 직전 deal_keys가 None) 부분 수집의 deal_keys는 None으로 저장한다 — 좁은 기준선을 세우지 않는다.
 diff 규칙: 새 deal_key 등장 → new_trade / ratio가 0.80 경계를 아래→위로 통과 → ratio_crossed / building_fingerprint 변화 → building_changed / scan 자체가 주소 미확정 등으로 무결과 → scan_failed(스냅샷은 갱신하지 않음).
 첫 실행(스냅샷 없음)은 기준선 저장만 하고 이벤트를 만들지 않는다.
 테스트: `tests/test_watch.py` — 첫 실행 무이벤트, 신규 거래 감지, 경계 통과, 실패 시 스냅샷 보존. pipeline.scan은 monkeypatch.

@@ -86,6 +86,8 @@ def compute_metrics(
     deposit_10k: Optional[int],
     months_covered: int,
     district: str = "",
+    trade_months_ok: Optional[int] = None,
+    rent_months_ok: Optional[int] = None,
 ) -> Metrics:
     """매칭 사다리로 좁힌 표본에서 매매·전세 중위값과 전세가율을 산출한다.
 
@@ -138,6 +140,8 @@ def compute_metrics(
         deposit_basis=deposit_basis,
         jeonse_ratio=jeonse_ratio,
         match_scope=scope,
+        trade_months_ok=trade_months_ok,
+        rent_months_ok=rent_months_ok,
         months_covered=months_covered,
     )
 

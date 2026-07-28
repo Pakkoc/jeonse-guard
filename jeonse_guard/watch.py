@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from . import analysis, pipeline, report
-from .models import ScanResult
+from .models import MonthlyFetch, ScanResult
 
 # 전세가율 경계 — 직전 값이 이 값 미만이었다가 이상이 되면 ratio_crossed
 RATIO_THRESHOLD = 0.80
@@ -87,7 +87,15 @@ def _build_snapshot(result: ScanResult) -> tuple[dict, dict]:
     """
     trades_section = result.sections.get("trades")
     trades_ok = trades_section is not None and trades_section.status == "ok"
-    deals = list(trades_section.data) if trades_ok and trades_section.data else []
+    raw = trades_section.data if trades_ok else None
+    trades_partial = False
+    if isinstance(raw, MonthlyFetch):
+        deals = list(raw.items)
+        trades_partial = raw.months_failed > 0
+    elif raw:
+        deals = list(raw)
+    else:
+        deals = []
     # 지역구 전체가 아니라 metrics가 매칭한 범위(내 단지·면적대)의 거래만 추적한다 —
     # 필터 없이 키잉하면 무관한 동네 거래마다 new_trade 알림이 발생한다.
     if deals and result.metrics is not None:
@@ -109,6 +117,7 @@ def _build_snapshot(result: ScanResult) -> tuple[dict, dict]:
     snapshot = {
         "date": result.scanned_at[:10],
         "deal_keys": sorted(key_map) if trades_ok else None,
+        "trades_partial": trades_partial,
         "trade_median_10k": metrics.trade_median_10k if metrics else None,
         "jeonse_ratio": metrics.jeonse_ratio if metrics else None,
         "building_fingerprint": fingerprint,
@@ -291,6 +300,18 @@ def run_watch(
         if prev is not None:
             events.extend(_diff_events(entry_id, prev, curr, key_map, result))
         # 첫 실행(prev 없음)은 기준선 저장만 하고 이벤트를 만들지 않는다
+
+        # 부분 수집 실행이 기준선을 좁히지 않게 이전 키를 합쳐 보존한다 —
+        # 좁아진 기준선은 다음 정상 실행에서 기존 거래를 신규로 오탐시킨다.
+        if curr.get("trades_partial") and curr["deal_keys"] is not None:
+            prev_keys = prev.get("deal_keys") if prev is not None else None
+            if isinstance(prev_keys, list):
+                curr["deal_keys"] = sorted(set(curr["deal_keys"]) | set(prev_keys))
+            else:
+                # 합칠 직전 기준선이 없는 부분 수집(첫 실행, 직전 trades 조회 실패)은
+                # 신뢰할 기준선이 못 된다 — None으로 남겨, 다음 정상 실행이
+                # 깨끗한 기준선을 세울 때까지 new_trade 비교를 하지 않는다 (소음 방지).
+                curr["deal_keys"] = None
 
         _write_snapshot_atomic(snapshot_path, curr)
         report_path = reports_dir / f"{entry_id}-latest.md"

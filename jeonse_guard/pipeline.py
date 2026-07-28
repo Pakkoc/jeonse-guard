@@ -78,30 +78,47 @@ def scan(
 
     # 3. 매매 실거래 / 4. 전월세 실거래
     month_list = real_estate.recent_months(months)
-    trades: list = []
+
+    def coverage_note(fetch) -> str:
+        """부분 실패를 섹션 note에 남긴다 — 리포트가 수집 범위를 과장하지 않게."""
+        if fetch.months_failed == 0:
+            return ""
+        return (
+            f"{fetch.months_requested}개월 중 {fetch.months_ok}개월만 수집"
+            f" (실패한 달: {', '.join(fetch.failed_months)})"
+        )
+
+    trades_fetch = None
     try:
-        trades = real_estate.fetch_trades(
+        trades_fetch = real_estate.fetch_trades(
             resolved.lawd_cd, month_list, asset_type=asset_type, base=base
         )
-        sections["trades"] = SectionResult(status="ok", data=trades)
+        sections["trades"] = SectionResult(
+            status="ok", data=trades_fetch, note=coverage_note(trades_fetch)
+        )
     except SourceError as exc:
         sections["trades"] = SectionResult(status="unavailable", note=str(exc))
 
-    rents: list = []
+    rents_fetch = None
     try:
-        rents = real_estate.fetch_rents(
+        rents_fetch = real_estate.fetch_rents(
             resolved.lawd_cd, month_list, asset_type=asset_type, base=base
         )
-        sections["rents"] = SectionResult(status="ok", data=rents)
+        sections["rents"] = SectionResult(
+            status="ok", data=rents_fetch, note=coverage_note(rents_fetch)
+        )
     except SourceError as exc:
         sections["rents"] = SectionResult(status="unavailable", note=str(exc))
 
     # 5. 지표 산출 + 6. 신호 평가 (섹션이 비어 있어도 정직하게 산출 불가로 처리)
     metrics = analysis.compute_metrics(
-        trades, rents,
+        trades_fetch.items if trades_fetch else [],
+        rents_fetch.items if rents_fetch else [],
         unit_name=unit_name, area_m2=area_m2,
         deposit_10k=deposit_10k, months_covered=months,
         district=resolved.jibun,
+        trade_months_ok=trades_fetch.months_ok if trades_fetch else None,
+        rent_months_ok=rents_fetch.months_ok if rents_fetch else None,
     )
     found = signals.evaluate(metrics=metrics, building=title, sections=sections)
 

@@ -1,11 +1,14 @@
-"""signals.evaluate 테스트 — 4종 신호 각각 발화/비발화, 근거 수치 포함, 단정 표현 금지."""
+"""signals.evaluate 테스트 — 5종 신호 각각 발화/비발화, 근거 수치 포함, 단정 표현 금지."""
 
 from __future__ import annotations
 
 from jeonse_guard import signals
 from jeonse_guard.models import BuildingTitle, Metrics, SectionResult, Signal
 
-ALLOWED_IDS = {"high_jeonse_ratio", "nongsaeng_building", "no_price_reference", "section_unavailable"}
+ALLOWED_IDS = {
+    "high_jeonse_ratio", "nongsaeng_building", "no_price_reference",
+    "section_unavailable", "partial_month_coverage",
+}
 
 
 def make_metrics(**overrides) -> Metrics:
@@ -134,8 +137,10 @@ def test_address_unresolved_case_only_section_signal():
 
 
 def test_only_allowed_ids_and_no_verdict_wording():
-    """신호는 계약의 4종뿐이며 '안전/위험/사기' 단정 표현을 쓰지 않는다."""
-    metrics = make_metrics(jeonse_ratio=0.95, deposit_used_10k=95000, trade_sample=1)
+    """신호는 계약의 5종뿐이며 '안전/위험/사기' 단정 표현을 쓰지 않는다."""
+    metrics = make_metrics(
+        jeonse_ratio=0.95, deposit_used_10k=95000, trade_sample=1, trade_months_ok=3
+    )
     sections = ok_sections()
     sections["building"] = SectionResult(status="unavailable", note="표제부 없음")
     building = make_building(main_purps="제1종근린생활시설")
@@ -157,3 +162,24 @@ def test_high_ratio_with_missing_operands_does_not_crash():
     metrics = make_metrics(jeonse_ratio=0.95, trade_median_10k=None)
     found = signals.evaluate(metrics=metrics, building=None, sections=ok_sections())
     assert "high_jeonse_ratio" not in ids(found)
+
+
+def test_partial_month_coverage_fires_at_half_failure():
+    """월별 수집이 절반 이상 실패하면 info 신호가 뜬다 (경계: 12개월 중 6개월 성공)."""
+    metrics = make_metrics(rent_months_ok=6)  # 실패 6/12 → 발화
+    found = signals.evaluate(metrics=metrics, building=None, sections=ok_sections())
+    partial = [s for s in found if s.id == "partial_month_coverage"]
+    assert len(partial) == 1
+    assert partial[0].level == "info"
+    assert "전세 6/12개월" in partial[0].basis
+
+
+def test_partial_month_coverage_not_fired_below_half_or_none():
+    """실패가 절반 미만이거나 수집 정보가 없으면(None) 발화하지 않는다."""
+    metrics = make_metrics(trade_months_ok=7, rent_months_ok=12)  # 실패 5/12 → 미발화
+    found = signals.evaluate(metrics=metrics, building=None, sections=ok_sections())
+    assert "partial_month_coverage" not in ids(found)
+
+    metrics = make_metrics()  # months_ok 정보 없음 (None)
+    found = signals.evaluate(metrics=metrics, building=None, sections=ok_sections())
+    assert "partial_month_coverage" not in ids(found)

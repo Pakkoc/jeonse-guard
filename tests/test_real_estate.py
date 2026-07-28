@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from jeonse_guard.errors import SourceError
-from jeonse_guard.models import Deal, RentDeal
+from jeonse_guard.models import Deal, MonthlyFetch, RentDeal
 from jeonse_guard.sources import real_estate
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -71,8 +71,13 @@ class TestFetchTrades:
     def test_실제_fixture_전건_파싱(self, monkeypatch):
         calls: list = []
         _patch_get_json(monkeypatch, {"202506": _load("trades_11440_202506.json")}, calls)
-        deals = real_estate.fetch_trades("11440", ["202506"], asset_type="apartment", base=BASE)
+        fetch = real_estate.fetch_trades("11440", ["202506"], asset_type="apartment", base=BASE)
 
+        assert isinstance(fetch, MonthlyFetch)
+        assert fetch.months_requested == 1
+        assert fetch.months_ok == 1
+        assert fetch.failed_months == []
+        deals = fetch.items
         assert len(deals) == 666  # fixture 전건에 price_10k가 있다
         assert all(isinstance(d, Deal) for d in deals)
         first = deals[0]
@@ -90,9 +95,10 @@ class TestFetchTrades:
             "202506": _load("trades_11440_202506.json"),
             "202505": _load("trades_11440_202505_small.json"),
         })
-        deals = real_estate.fetch_trades(
+        fetch = real_estate.fetch_trades(
             "11440", ["202506", "202505"], asset_type="apartment", base=BASE
         )
+        deals = fetch.items
         # 666건 + 소형 fixture 4건 중 price 누락 1건 버림 → 3건
         assert len(deals) == 666 + 3
         # price 누락 행은 버려졌다
@@ -104,15 +110,20 @@ class TestFetchTrades:
         assert lenient.floor is None
         assert lenient.build_year is None
 
-    def test_일부_달_실패는_건너뛰고_합산(self, monkeypatch):
+    def test_일부_달_실패는_건너뛰고_합산하고_통계에_기록(self, monkeypatch):
         _patch_get_json(monkeypatch, {
             "202506": SourceError("HTTP 502: upstream"),
             "202505": _load("trades_11440_202505_small.json"),
         })
-        deals = real_estate.fetch_trades(
+        fetch = real_estate.fetch_trades(
             "11440", ["202506", "202505"], asset_type="apartment", base=BASE
         )
-        assert len(deals) == 3  # 실패한 달은 제외, 성공한 달만 합산
+        assert len(fetch.items) == 3  # 실패한 달은 제외, 성공한 달만 합산
+        # 부분 실패가 통계에 정직하게 남는다
+        assert fetch.months_requested == 2
+        assert fetch.months_ok == 1
+        assert fetch.months_failed == 1
+        assert fetch.failed_months == ["202506"]
 
     def test_전부_실패하면_SourceError에_실패_달_수(self, monkeypatch):
         _patch_get_json(monkeypatch, {
@@ -135,17 +146,19 @@ class TestFetchTrades:
             {"name": "소수점가격", "district": "성산동", "price_10k": 92000.5,
              "deal_date": "2025-06-02"},
         ]}})
-        deals = real_estate.fetch_trades("11440", ["202506"], asset_type="apartment", base=BASE)
+        fetch = real_estate.fetch_trades("11440", ["202506"], asset_type="apartment", base=BASE)
         # 정수값 float는 유지, 소수부 있는 가격은 파싱 불가로 버림
-        assert [d.name for d in deals] == ["실수형"]
-        assert deals[0].price_10k == 92000
-        assert deals[0].floor == 9
+        assert [d.name for d in fetch.items] == ["실수형"]
+        assert fetch.items[0].price_10k == 92000
+        assert fetch.items[0].floor == 9
 
     def test_빈_items는_빈_목록(self, monkeypatch):
         _patch_get_json(monkeypatch, {"202506": {"items": []}})
-        assert real_estate.fetch_trades(
+        fetch = real_estate.fetch_trades(
             "11440", ["202506"], asset_type="apartment", base=BASE
-        ) == []
+        )
+        assert fetch.items == []
+        assert fetch.months_ok == 1  # "성공했지만 거래 0건"은 실패가 아니다
 
     def test_잘못된_asset_type은_SourceError(self, monkeypatch):
         _patch_get_json(monkeypatch, {"202506": {"items": []}})
@@ -160,8 +173,9 @@ class TestFetchRents:
     def test_실제_fixture_전세_월세_구분(self, monkeypatch):
         calls: list = []
         _patch_get_json(monkeypatch, {"202506": _load("rents_11440_202506.json")}, calls)
-        rents = real_estate.fetch_rents("11440", ["202506"], asset_type="apartment", base=BASE)
+        fetch = real_estate.fetch_rents("11440", ["202506"], asset_type="apartment", base=BASE)
 
+        rents = fetch.items
         assert len(rents) == 1000  # fixture 전건에 deposit_10k가 있다
         assert all(isinstance(r, RentDeal) for r in rents)
         jeonse = [r for r in rents if r.monthly_rent_10k == 0]
@@ -173,8 +187,9 @@ class TestFetchRents:
 
     def test_보증금_누락_버림과_contract_type_정규화(self, monkeypatch):
         _patch_get_json(monkeypatch, {"202505": _load("rents_11440_202505_small.json")})
-        rents = real_estate.fetch_rents("11440", ["202505"], asset_type="apartment", base=BASE)
+        fetch = real_estate.fetch_rents("11440", ["202505"], asset_type="apartment", base=BASE)
 
+        rents = fetch.items
         # 3건 중 deposit 누락 1건 버림 → 2건
         assert len(rents) == 2
         assert all(r.name != "보증금누락행" for r in rents)
@@ -185,15 +200,17 @@ class TestFetchRents:
         assert wolse.monthly_rent_10k == 100      # 월세
         assert wolse.contract_type == "신규"
 
-    def test_일부_달_실패는_건너뛰고_합산(self, monkeypatch):
+    def test_일부_달_실패는_건너뛰고_합산하고_통계에_기록(self, monkeypatch):
         _patch_get_json(monkeypatch, {
             "202506": _load("rents_11440_202505_small.json"),
             "202505": SourceError("네트워크 오류: timeout"),
         })
-        rents = real_estate.fetch_rents(
+        fetch = real_estate.fetch_rents(
             "11440", ["202506", "202505"], asset_type="apartment", base=BASE
         )
-        assert len(rents) == 2
+        assert len(fetch.items) == 2
+        assert fetch.months_ok == 1
+        assert fetch.failed_months == ["202505"]
 
     def test_전부_실패하면_SourceError에_실패_달_수(self, monkeypatch):
         _patch_get_json(monkeypatch, {
