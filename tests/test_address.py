@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from jeonse_guard import net
-from jeonse_guard.errors import AmbiguousAddressError
+from jeonse_guard.errors import AmbiguousAddressError, SourceError
 from jeonse_guard.sources import address
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -109,3 +109,48 @@ def test_mountain_and_empty_sub_address(monkeypatch):
     assert resolved.ji == "0000"
     assert resolved.plat_gb_cd == "1"
     assert resolved.pnu == "1144012500202000000"
+
+
+def raise_network_error(url, params=None, *, timeout=25):
+    raise SourceError("네트워크 오류: 연결 실패")
+
+
+def clear_kakao_key(monkeypatch) -> None:
+    monkeypatch.delenv("KAKAO_REST_API_KEY", raising=False)
+
+
+def test_proxy_failure_without_key_raises_guidance(monkeypatch):
+    """프록시 호출 실패 + 카카오 키 없음 — 키 발급 안내 SourceError."""
+    clear_kakao_key(monkeypatch)
+    monkeypatch.setattr(net, "get_json", raise_network_error)
+
+    with pytest.raises(SourceError) as exc_info:
+        address.resolve_address("서울 마포구 성산동 200-1", base=BASE)
+
+    message = str(exc_info.value)
+    assert "API 키 없음" in message
+    assert "KAKAO_REST_API_KEY" in message
+
+
+def test_proxy_failure_with_key_falls_back_to_direct(monkeypatch):
+    """프록시 호출 실패 + 카카오 키 있음 — dapi.kakao.com 직접 호출로 필지 확정."""
+    monkeypatch.setenv("KAKAO_REST_API_KEY", "test-rest-key")
+    payload = load_fixture("geocode_seongsan.json")
+    calls: list = []
+
+    def fake_get_json(url, params=None, *, timeout=25, headers=None):
+        if url == f"{BASE}/v1/kakao-local/geocode":
+            raise SourceError("네트워크 오류: 연결 실패")
+        calls.append((url, params, headers))
+        return payload
+
+    monkeypatch.setattr(net, "get_json", fake_get_json)
+
+    resolved = address.resolve_address("서울 마포구 성산동 200-1", base=BASE)
+
+    assert resolved.b_code == "1144012500"
+    assert resolved.bun == "0200"
+    url, params, headers = calls[0]
+    assert url == "https://dapi.kakao.com/v2/local/search/address.json"
+    assert params == {"query": "서울 마포구 성산동 200-1", "size": 2}
+    assert headers == {"authorization": "KakaoAK test-rest-key"}

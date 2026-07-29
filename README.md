@@ -156,6 +156,26 @@ $ jeonse-guard scan "서울 마포구 성산동 200-1" --deposit 30000
 
 공공 API 호출은 [NomaDamas/k-skill](https://github.com/NomaDamas/k-skill) 프로젝트의 공용 프록시(`k-skill-proxy`)를 경유합니다. k-skill은 MIT 라이선스로 공개되어 있으며, 이 프로젝트의 일부 데이터 어댑터는 k-skill 스크립트를 참조해 작성되었습니다.
 
+## 데이터 흐름과 개인정보
+
+이 도구는 계약 여부를 좌우할 만한 정보(주소, 보증금)를 다루므로 무엇이 어디로 나가는지 정직하게 밝힙니다.
+
+기본 실행(프록시 경유) 기준으로, 프록시(`k-skill-proxy.nomadamas.org`)에 전달되는 값은 다음과 같습니다:
+
+- **주소 지오코딩**: 입력한 **주소 원문 전체**가 카카오 로컬 API 호출을 위해 프록시로 전달됩니다
+- **실거래가 조회**: 5자리 법정동 코드(`lawd_cd`)와 조회 월(`deal_ymd`)만 전달됩니다 — 정부 실거래가 공개 API가 원래 공개하는 범위(동 단위 집계)와 동일하고, 특정 필지를 특정하지 않습니다
+- **건축물대장 조회**: 법정동 코드·지번(`sigunguCd/bjdongCd/bun/ji`)이 전달됩니다
+
+k-skill-proxy는 오픈소스([AGPL-3.0](https://github.com/NomaDamas/k-skill/blob/main/packages/k-skill-proxy/LICENSE))라 실제로 로깅 코드를 확인할 수 있습니다. 확인해본 결과([`server.js`](https://github.com/NomaDamas/k-skill/blob/main/packages/k-skill-proxy/src/server.js)), 요청별 URL·쿼리스트링을 남기는 Fastify 기본 로깅은 `disableRequestLogging: true`로 꺼져 있고, 대신 요청마다 `{route, statusCode}` 형태의 **집계용 카운터 한 줄**만 남기도록 되어 있습니다. 즉 "이 경로가 몇 번 호출됐는지"는 기록되지만 **호출 시 넘긴 주소 값 자체는 그 로그에 남지 않습니다.**
+
+다만 다음은 코드 확인만으로는 지울 수 없는 잔여 리스크로, 그대로 밝혀둡니다:
+
+- 프록시는 Cloudflare Tunnel 뒤에서 운영됩니다. Cloudflare 엣지 단에서 어떤 메타데이터를 얼마나 보관하는지는 애플리케이션 코드 밖의 영역이라 확인할 수 없습니다
+- 지오코딩 자체는 최종적으로 카카오 API가 원문 주소를 받으므로, 프록시를 쓰지 않아도 이 부분은 동일합니다
+- k-skill-proxy 운영자의 명시적인 데이터 보존·처리 방침 문서는 아직 없습니다 — 위 내용은 특정 시점의 소스 코드를 읽고 확인한 사실이며, 운영자가 서버 코드를 바꾸면 달라질 수 있는 신뢰(trust)이지 계약된 보장은 아닙니다
+
+프라이버시가 걱정되면 아래 "프록시 사용 예절"의 self-key 옵션으로 프록시를 완전히 우회할 수 있습니다.
+
 ## 프록시 사용 예절
 
 기본 프록시는 커뮤니티가 무료로 운영하는 공용 인프라입니다. **개인의 소량 조회 용도로만 사용해 주세요.**
@@ -163,6 +183,7 @@ $ jeonse-guard scan "서울 마포구 성산동 200-1" --deposit 30000
 - 대량 조회, 상업적 사용, 높은 빈도의 자동화가 필요하면 [공공데이터포털](https://www.data.go.kr)에서 무료 키를 직접 발급받아 쓰세요
 - `KSKILL_PROXY_BASE_URL` 환경변수로 자체 배포한 프록시로 교체할 수 있습니다
 - 건축물대장은 `DATA_GO_KR_API_KEY` 설정 시 프록시를 거치지 않는 직접 호출 모드로 동작합니다
+- 주소 지오코딩은 [카카오 개발자센터](https://developers.kakao.com)에서 발급받은 REST API 키를 `KAKAO_REST_API_KEY`로 설정하면, 프록시 호출이 실패할 때 프록시를 거치지 않고 카카오에 직접 호출합니다(정상 응답 시에는 기존과 동일하게 프록시를 우선 사용합니다)
 
 ## 라이선스
 

@@ -14,12 +14,22 @@ from .config import DEFAULT_TIMEOUT, USER_AGENT
 from .errors import SourceError
 
 
-def get_json(url: str, params: dict | None = None, *, timeout: int = DEFAULT_TIMEOUT) -> dict:
-    """GET 요청 후 JSON dict 반환. 실패는 전부 SourceError로 정규화."""
+def get_json(
+    url: str,
+    params: dict | None = None,
+    *,
+    timeout: int = DEFAULT_TIMEOUT,
+    headers: dict | None = None,
+) -> dict:
+    """GET 요청 후 JSON dict 반환. 실패는 전부 SourceError로 정규화.
+
+    headers는 기본 헤더(accept/user-agent) 위에 덮어써진다 — 인증키 직접 호출 모드용.
+    """
     if params:
         url = f"{url}?{urllib.parse.urlencode(params)}"
     request = urllib.request.Request(
-        url, headers={"accept": "application/json", "user-agent": USER_AGENT}
+        url,
+        headers={"accept": "application/json", "user-agent": USER_AGENT, **(headers or {})},
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:

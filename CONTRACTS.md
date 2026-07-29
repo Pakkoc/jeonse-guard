@@ -36,8 +36,12 @@ def fetch_title(addr: ResolvedAddress, *, base: str, timeout: int = 30) -> Build
 
 **building.py 이중 모드 (중요)**: 프로덕션 프록시에 `/v1/building-register/title` 라우트가 아직 배포되지 않아 404("Route ... not found")가 온다 (2026-07-28 실측).
 ① 프록시 경로를 먼저 시도한다. ② 실패 시 환경변수 `KSKILL_BUILDING_REGISTER_API_KEY` → `DATA_GO_KR_API_KEY` 순으로 키를 찾아, 있으면 **직접 모드**: `https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo`에 `serviceKey`+`sigunguCd/bjdongCd/platGbCd/bun/ji&numOfRows=100`으로 `net.get_text` 호출 → XML을 `xml.etree.ElementTree`로 파싱 (resultCode 확인, item들에서 mainPurpsCdNm 등 추출). ③ 키도 없으면 `SourceError("프록시 미배포 + API 키 없음 — data.go.kr에서 무료 키 발급 후 DATA_GO_KR_API_KEY 설정 (데이터셋 15134735 활용신청 필요)")`.
+
+**address.py 이중 모드** (2026-07-29 추가, 프라이버시 우회 경로): 프록시가 유일한 경로일 때 카카오 지오코딩에 넘어가는 값은 사용자가 입력한 **원문 주소 그 자체**라 self-key 우회 수단이 없다는 점이 지적되어 building.py와 같은 패턴으로 추가함. ① 프록시 `/v1/kakao-local/geocode`를 먼저 시도한다. ② 실패 시 환경변수 `KAKAO_REST_API_KEY`가 있으면 **직접 모드**: `https://dapi.kakao.com/v2/local/search/address.json`에 `query`+`size=2`, 헤더 `authorization: KakaoAK <key>`로 `net.get_json` 호출(응답 스키마는 프록시와 동일한 `documents[]` 그대로). 프록시가 갖는 "주소 검색 0건 시 키워드 검색 재시도" 폴백은 재현하지 않는다 — 직접 모드는 비상 경로이므로 정확한 지번 입력을 전제로 한다. ③ 키도 없으면 `SourceError("프록시 호출 실패 + API 키 없음 — 카카오 개발자센터... KAKAO_REST_API_KEY 환경변수로 설정하세요")`.
+`net.get_json`에 `headers: dict | None = None` 키워드 인자를 추가해 인증 헤더를 기본 헤더 위에 덮어쓸 수 있게 했다(기존 호출부는 영향 없음 — 파라미터 생략 시 동일).
+
 테스트: `tests/test_address.py`, `tests/test_building.py` (+ fixtures). 실제 지오코딩 fixture가 `tests/fixtures/geocode_seongsan.json`에 있다 — 응답 구조(documents[].address.b_code/main_address_no/sub_address_no/mountain_yn)를 이 파일로 확인하라. 직접 모드 XML fixture는 공공데이터포털 표준 응답 형태로 직접 작성.
-케이스 필수: 정상 1건 확정 / 다중 후보 → AmbiguousAddressError / 필지 누락 → AmbiguousAddressError / 프록시 404 + 키 없음 → SourceError 안내 / 프록시 404 + 키 있음 → 직접 모드 파싱 / 대장 빈 결과 → SourceError("표제부 없음") / 다동 건물 대표(연면적 최대) 선정.
+케이스 필수: 정상 1건 확정 / 다중 후보 → AmbiguousAddressError / 필지 누락 → AmbiguousAddressError / 프록시 실패(404/네트워크 오류) + 키 없음 → SourceError 안내 / 프록시 실패 + 키 있음 → 직접 모드 파싱 / 대장 빈 결과 → SourceError("표제부 없음") / 다동 건물 대표(연면적 최대) 선정.
 
 ### A2. `jeonse_guard/sources/real_estate.py`
 
