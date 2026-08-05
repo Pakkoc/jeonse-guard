@@ -1,7 +1,7 @@
 {
-  "date": "2026-08-05",
+  "date": "2026-08-06",
   "deal_keys": null,
-  "trades_partial": false,
+  "trades_partial": true,
   "trade_median_10k": null,
   "jeonse_ratio": null,
   "building_fingerprint": "제1종근린생활시설|19800912"
