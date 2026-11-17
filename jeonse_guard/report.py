@@ -141,9 +141,11 @@ def render(result: ScanResult) -> str:
     lines.append("")
     rows: list[tuple[str, str, str]] = []
     if result.address is not None:
+        # 도로명 주소는 카카오 응답에만 있는 값이라 리포트에 싣지 않는다.
+        # 리포트는 공개 저장소에 커밋될 수 있고, 카카오 운영정책 제5조 20·30호가
+        # 받은 데이터의 목적 외 캐시·출판을 금지한다. 지번은 입력값을 확정한 것,
+        # 법정동 코드는 행정표준코드라 남긴다. (2026-11-18 결정)
         rows.append(("확정 주소(지번)", result.address.jibun, "카카오 지오코딩"))
-        if result.address.road:
-            rows.append(("도로명 주소", result.address.road, "카카오 지오코딩"))
         rows.append(("법정동 코드", result.address.b_code, "카카오 지오코딩"))
     building_sec = result.sections.get("building")
     if building_sec is not None and building_sec.status == "ok" and building_sec.data is not None:

@@ -151,3 +151,11 @@ def test_metrics_rows_show_month_coverage():
     by_item = {item: source for item, _, source in rows}
     assert "(12/12개월 수집)" in by_item["매매 중위가"]
     assert "(7/12개월 수집)" in by_item["전세 중위 보증금"]
+
+
+def test_report_omits_kakao_road_address():
+    # 리포트는 공개 저장소에 커밋될 수 있어 카카오 응답 전용 값(도로명)을 싣지 않는다.
+    md = report.render(make_full_result())
+    assert "월드컵로 100" not in md
+    assert "도로명" not in md
+    assert "1144012700" in md

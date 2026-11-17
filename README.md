@@ -166,19 +166,29 @@ $ jeonse-guard scan "서울 마포구 성산동 200-1" --deposit 30000
 - **실거래가 조회**: 5자리 법정동 코드(`lawd_cd`)와 조회 월(`deal_ymd`)만 전달됩니다 — 정부 실거래가 공개 API가 원래 공개하는 범위(동 단위 집계)와 동일하고, 특정 필지를 특정하지 않습니다
 - **건축물대장 조회**: 법정동 코드·지번(`sigunguCd/bjdongCd/bun/ji`)이 전달됩니다
 
-k-skill-proxy는 오픈소스([AGPL-3.0](https://github.com/NomaDamas/k-skill/blob/main/packages/k-skill-proxy/LICENSE))라 실제로 로깅 코드를 확인할 수 있습니다. 확인해본 결과([`server.js`](https://github.com/NomaDamas/k-skill/blob/main/packages/k-skill-proxy/src/server.js)), 요청별 URL·쿼리스트링을 남기는 Fastify 기본 로깅은 `disableRequestLogging: true`로 꺼져 있고, 대신 요청마다 `{route, statusCode}` 형태의 **집계용 카운터 한 줄**만 남기도록 되어 있습니다. 즉 "이 경로가 몇 번 호출됐는지"는 기록되지만 **호출 시 넘긴 주소 값 자체는 그 로그에 남지 않습니다.**
+k-skill-proxy는 오픈소스([AGPL-3.0](https://github.com/NomaDamas/k-skill/blob/main/packages/k-skill-proxy/LICENSE))라 실제로 로깅 코드를 확인할 수 있습니다. 확인해본 결과([`server.js`](https://github.com/NomaDamas/k-skill/blob/main/packages/k-skill-proxy/src/server.js), 2026-11-17 `main` 기준), 요청별 URL·쿼리스트링을 남기는 Fastify 기본 로깅은 `disableRequestLogging: true`로 꺼져 있고, 대신 요청마다 "route usage" 한 줄을 남깁니다.
+
+- **정상 응답**: `{route, statusCode}`만 남습니다 — 주소 값은 남지 않습니다
+- **오류 응답(4xx·5xx)**: 쿼리 키 이름과 **쿼리 값의 sha256 앞 8자리(솔트 없음)**, 오류 코드가 추가로 남습니다. 주소 원문은 아니지만, 후보 주소를 대입하면 맞춰볼 수 있는 값입니다
 
 다만 다음은 코드 확인만으로는 지울 수 없는 잔여 리스크로, 그대로 밝혀둡니다:
 
-- 프록시는 Cloudflare Tunnel 뒤에서 운영됩니다. Cloudflare 엣지 단에서 어떤 메타데이터를 얼마나 보관하는지는 애플리케이션 코드 밖의 영역이라 확인할 수 없습니다
+- 프록시는 2026-10-21부터 Google Cloud Run 도쿄 리전(`asia-northeast1`)에서 운영됩니다([배포 문서](https://github.com/NomaDamas/k-skill/blob/main/docs/deploy-k-skill-proxy.md)). Cloud Run은 요청 로그를 기본으로 남기고, 그 로그의 요청 URL에는 **쿼리스트링(=주소 원문)과 IP**가 포함됩니다([Cloud Run 로깅](https://docs.cloud.google.com/run/docs/logging)). 운영자가 이 로그를 제외 설정했는지는 공개 문서로 확인할 수 없습니다
 - 지오코딩 자체는 최종적으로 카카오 API가 원문 주소를 받으므로, 프록시를 쓰지 않아도 이 부분은 동일합니다
-- k-skill-proxy 운영자의 명시적인 데이터 보존·처리 방침 문서는 아직 없습니다 — 위 내용은 특정 시점의 소스 코드를 읽고 확인한 사실이며, 운영자가 서버 코드를 바꾸면 달라질 수 있는 신뢰(trust)이지 계약된 보장은 아닙니다
+- 운영자는 [개인정보 처리방침](https://k-skill-proxy.nomadamas.org/privacy)(2026-08-18 시행)을 두고 있지만, 수탁자 항목에는 Cloudflare만 있고 현재 인프라인 Google Cloud는 빠져 있습니다. 이용약관은 없습니다. 위 내용은 특정 시점의 소스 코드·문서를 읽고 확인한 사실이며, 운영자가 바꾸면 달라질 수 있는 신뢰(trust)이지 계약된 보장은 아닙니다
 
 프라이버시가 걱정되면 아래 "프록시 사용 예절"의 self-key 옵션으로 프록시를 완전히 우회할 수 있습니다.
 
 ## 프록시 사용 예절
 
-기본 프록시는 커뮤니티가 무료로 운영하는 공용 인프라입니다. **개인의 소량 조회 용도로만 사용해 주세요.**
+기본 프록시는 커뮤니티가 무료로 운영하는 공용 인프라입니다. **개인의 소량 조회 용도로만 사용해 주세요.** k-skill 저장소도 공개정보 조회 기능을 "개인적·비조직적 용도로만" 쓰라고 안내합니다([README](https://github.com/NomaDamas/k-skill/blob/main/README.md)).
+
+프록시는 **운영자 본인의 API 키**(카카오 REST 키, 공공데이터포털 서비스키)로 업스트림을 호출하고, 그 키의 하루 한도를 모든 이용자가 나눠 씁니다. 그래서 다음을 알고 써 주세요.
+
+- **언제든 막힐 수 있습니다.** 프록시에는 이용약관도 인증도 없고, 운영 문서는 문제가 생기면 그때 인증을 붙인다고 적고 있습니다. IP당 분당 180회 제한이 있고, 업스트림 한도 초과(503)·장애 이력도 있습니다
+- **카카오 약관상 약한 고리입니다.** 카카오 플랫폼 서비스 약관 제11조 ③과 운영정책 제5조 30호는 API로 얻은 데이터·키를 사전 승낙 없이 타인에게 제공하는 것을 금지합니다. 책임은 키 주인(프록시 운영자)에게 있지만, 키가 차단되면 이 도구의 기본 경로도 함께 끊깁니다
+- **앱·웹 서비스의 백엔드로 쓰지 마세요.** 다수 사용자를 받는 서비스라면 자기 키로 직접 호출하거나 프록시를 자체 배포해야 합니다. 프록시는 CORS 헤더가 없어 브라우저에서 직접 호출할 수도 없습니다
+- 카카오 운영정책 제5조 20·30호(받은 데이터의 목적 외 캐시·출판 금지)를 고려해, 리포트에는 카카오 응답에만 있는 도로명 주소를 싣지 않습니다. 리포트가 공개 저장소에 커밋될 수 있기 때문입니다
 
 - 대량 조회, 상업적 사용, 높은 빈도의 자동화가 필요하면 [공공데이터포털](https://www.data.go.kr)에서 무료 키를 직접 발급받아 쓰세요
 - `KSKILL_PROXY_BASE_URL` 환경변수로 자체 배포한 프록시로 교체할 수 있습니다
