@@ -1,7 +1,7 @@
 """건축물대장 표제부 어댑터 — 이중 모드 (프록시 우선, 실패 시 data.go.kr 직접 XML).
 
 ① 프록시 `/v1/building-register/title` 를 먼저 시도한다 (JSON).
-② 실패(예: 라우트 미배포 404) 시 환경변수 KSKILL_BUILDING_REGISTER_API_KEY →
+② 실패(예: 프록시 404·5xx·네트워크 오류) 시 환경변수 KSKILL_BUILDING_REGISTER_API_KEY →
    DATA_GO_KR_API_KEY 순으로 키를 찾아, 있으면 data.go.kr BldRgstHubService
    getBrTitleInfo 를 직접 호출해 XML을 파싱한다.
 ③ 키도 없으면 발급 안내를 담은 SourceError로 중단한다.
@@ -24,7 +24,7 @@ from ..models import BuildingTitle, ResolvedAddress
 
 DIRECT_URL = "https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo"
 NO_KEY_MSG = (
-    "프록시 미배포 + API 키 없음 — data.go.kr에서 무료 키 발급 후 "
+    "프록시 호출 실패 + API 키 없음 — data.go.kr에서 무료 키 발급 후 "
     "DATA_GO_KR_API_KEY 설정 (데이터셋 15134735 활용신청 필요)"
 )
 

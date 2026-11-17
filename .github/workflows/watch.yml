@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 체크아웃
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: watchlist 확인
         id: check
@@ -35,7 +35,7 @@ jobs:
 
       - name: Python 3.12 설치
         if: steps.check.outputs.exists == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 

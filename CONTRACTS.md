@@ -34,8 +34,8 @@ def resolve_address(query: str, *, base: str, timeout: int = 25) -> ResolvedAddr
 def fetch_title(addr: ResolvedAddress, *, base: str, timeout: int = 30) -> BuildingTitle: ...
 ```
 
-**building.py 이중 모드 (중요)**: 프로덕션 프록시에 `/v1/building-register/title` 라우트가 아직 배포되지 않아 404("Route ... not found")가 온다 (2026-07-28 실측).
-① 프록시 경로를 먼저 시도한다. ② 실패 시 환경변수 `KSKILL_BUILDING_REGISTER_API_KEY` → `DATA_GO_KR_API_KEY` 순으로 키를 찾아, 있으면 **직접 모드**: `https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo`에 `serviceKey`+`sigunguCd/bjdongCd/platGbCd/bun/ji&numOfRows=100`으로 `net.get_text` 호출 → XML을 `xml.etree.ElementTree`로 파싱 (resultCode 확인, item들에서 mainPurpsCdNm 등 추출). ③ 키도 없으면 `SourceError("프록시 미배포 + API 키 없음 — data.go.kr에서 무료 키 발급 후 DATA_GO_KR_API_KEY 설정 (데이터셋 15134735 활용신청 필요)")`.
+**building.py 이중 모드 (중요)**: 프로덕션 프록시 `/v1/building-register/title` 라우트는 배포돼 200으로 응답한다 (2026-11-17 실측. 2026-07-28에는 미배포 404였다). 프록시 장애 대비로 직접 모드를 유지한다.
+① 프록시 경로를 먼저 시도한다. ② 실패 시 환경변수 `KSKILL_BUILDING_REGISTER_API_KEY` → `DATA_GO_KR_API_KEY` 순으로 키를 찾아, 있으면 **직접 모드**: `https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo`에 `serviceKey`+`sigunguCd/bjdongCd/platGbCd/bun/ji&numOfRows=100`으로 `net.get_text` 호출 → XML을 `xml.etree.ElementTree`로 파싱 (resultCode 확인, item들에서 mainPurpsCdNm 등 추출). ③ 키도 없으면 `SourceError("프록시 호출 실패 + API 키 없음 — data.go.kr에서 무료 키 발급 후 DATA_GO_KR_API_KEY 설정 (데이터셋 15134735 활용신청 필요)")`.
 
 **address.py 이중 모드** (2026-07-29 추가, 프라이버시 우회 경로): 프록시가 유일한 경로일 때 카카오 지오코딩에 넘어가는 값은 사용자가 입력한 **원문 주소 그 자체**라 self-key 우회 수단이 없다는 점이 지적되어 building.py와 같은 패턴으로 추가함. ① 프록시 `/v1/kakao-local/geocode`를 먼저 시도한다. ② 실패 시 환경변수 `KAKAO_REST_API_KEY`가 있으면 **직접 모드**: `https://dapi.kakao.com/v2/local/search/address.json`에 `query`+`size=2`, 헤더 `authorization: KakaoAK <key>`로 `net.get_json` 호출(응답 스키마는 프록시와 동일한 `documents[]` 그대로). 프록시가 갖는 "주소 검색 0건 시 키워드 검색 재시도" 폴백은 재현하지 않는다 — 직접 모드는 비상 경로이므로 정확한 지번 입력을 전제로 한다. ③ 키도 없으면 `SourceError("프록시 호출 실패 + API 키 없음 — 카카오 개발자센터... KAKAO_REST_API_KEY 환경변수로 설정하세요")`.
 `net.get_json`에 `headers: dict | None = None` 키워드 인자를 추가해 인증 헤더를 기본 헤더 위에 덮어쓸 수 있게 했다(기존 호출부는 영향 없음 — 파라미터 생략 시 동일).

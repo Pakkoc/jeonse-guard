@@ -81,11 +81,11 @@ $ jeonse-guard watch
 
 첫 실행은 기준선 스냅샷만 저장하고 이벤트를 만들지 않습니다.
 
-### 건축물대장 섹션 활성화 (선택)
+### 건축물대장 비상 경로 (선택)
 
-정직하게 말씀드리면, **건축물대장 섹션은 현재 기본적으로 "확인 불가(unavailable)"로 표시됩니다.** 공용 프록시에 건축물대장 라우트가 아직 배포되지 않았기 때문입니다. 이 경우에도 리포트는 실거래·전세가율만으로 완성되며, 확인 불가 사실이 `section_unavailable` 신호로 명시됩니다.
+건축물대장 섹션은 **키 없이 기본으로 동작합니다** — 공용 프록시가 표제부를 조회합니다(2026-11-17 실측). 프록시가 실패하면 그 섹션만 "확인 불가(unavailable)"로 강등되고, 리포트는 실거래·전세가율만으로 완성되며 확인 불가 사실이 `section_unavailable` 신호로 명시됩니다.
 
-활성화하려면 무료 키 하나면 됩니다:
+프록시 장애에 대비하려면 무료 키 하나를 등록해 두세요:
 
 1. [공공데이터포털](https://www.data.go.kr/data/15134735/openapi.do)에서 **건축HUB 건축물대장정보 서비스(데이터셋 15134735)** 활용신청 — 무료, 자동승인
 2. 발급받은 인증키를 환경변수로 설정:
@@ -120,7 +120,7 @@ $ jeonse-guard scan "서울 마포구 성산동 200-1" --deposit 30000
 2. 내 fork의 **Actions** 탭에서 워크플로 활성화 (fork는 기본 비활성)
 3. **일회성 진단** — Actions → `scan` → *Run workflow* → 주소(필수)와 보증금·단지명·면적(선택) 입력 → 실행이 끝나면 **Summary 화면에서 리포트를 바로 확인**할 수 있고, `reports/`에도 커밋됩니다
 4. **워치독** — `watchlist.example.toml`을 `watchlist.toml`로 복사해 내 계약 정보로 수정 후 커밋하면, `watch` 워크플로가 **매일 07:00 KST**에 자동 실행됩니다. 변화가 감지되면 저장소에 Issue가 생성되고, 스냅샷·리포트가 커밋됩니다. 수동 실행(*Run workflow*)도 가능합니다. **fork는 Issues 기능이 기본으로 꺼져 있으니** *Settings → General → Features*에서 **Issues**를 켜 두세요 (안 켜면 알림 Issue 생성이 실패합니다)
-5. (선택) *Settings → Secrets and variables → Actions*에 `DATA_GO_KR_API_KEY`를 등록하면 건축물대장 섹션이 활성화됩니다
+5. (선택) *Settings → Secrets and variables → Actions*에 `DATA_GO_KR_API_KEY`를 등록하면 프록시 장애 때도 건축물대장 섹션이 유지됩니다
 
 > **프라이버시 참고**: public 저장소의 fork는 public입니다. watchlist에는 내 주소·보증금이 들어가므로, 공개가 부담스러우면 fork 대신 이 저장소를 clone해서 **private 저장소로 push**해 쓰는 것을 권장합니다. 워크플로는 동일하게 동작합니다.
 
@@ -182,7 +182,7 @@ k-skill-proxy는 오픈소스([AGPL-3.0](https://github.com/NomaDamas/k-skill/bl
 
 - 대량 조회, 상업적 사용, 높은 빈도의 자동화가 필요하면 [공공데이터포털](https://www.data.go.kr)에서 무료 키를 직접 발급받아 쓰세요
 - `KSKILL_PROXY_BASE_URL` 환경변수로 자체 배포한 프록시로 교체할 수 있습니다
-- 건축물대장은 `DATA_GO_KR_API_KEY` 설정 시 프록시를 거치지 않는 직접 호출 모드로 동작합니다
+- 건축물대장은 `DATA_GO_KR_API_KEY`를 설정하면, 프록시 호출이 실패할 때 프록시를 거치지 않고 공공데이터포털에 직접 호출합니다(정상 응답 시에는 프록시를 우선 사용합니다)
 - 주소 지오코딩은 [카카오 개발자센터](https://developers.kakao.com)에서 발급받은 REST API 키를 `KAKAO_REST_API_KEY`로 설정하면, 프록시 호출이 실패할 때 프록시를 거치지 않고 카카오에 직접 호출합니다(정상 응답 시에는 기존과 동일하게 프록시를 우선 사용합니다)
 
 ## 라이선스
